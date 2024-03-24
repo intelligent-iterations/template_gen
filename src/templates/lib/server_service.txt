@@ -1,0 +1,83 @@
+import 'dart:convert';
+import 'package:either_dart/either.dart';
+import 'package:get_it/get_it.dart';
+import '../model/class_name.dart';
+import 'package:open_llm_studio_api/service/route_service.dart';
+import '../util/logging.dart';
+
+ClassNameService get classNameService =>
+    GetIt.instance<ClassNameService>();
+
+class ClassNameService {
+  final tag = 'ClassName';
+  final path = 'className';
+
+  Future<Either<String, ClassName>> set({
+    ClassName? model,
+  }) async {
+    devLog(tag: tag, message: 'set called');
+    try {
+      final sample = ClassName.fromJson(ClassName.exampleJson());
+      final doc = model ?? sample;
+
+      await apiService.post('/$path/set', doc.toJson());
+
+      return Right(doc);
+    } catch (e) {
+      // logError('$tag $e');
+      return Left('error');
+    }
+  }
+
+  Future<Either<String, ClassName>> delete({required ClassName model}) async {
+    try {
+      devLog(tag: tag, message: 'delete on ${model.id}');
+      await apiService.delete('/$path/delete/${model.id}');
+      return Right(model);
+    } catch (e) {
+      // logError('$tag $e');
+      return Left('Error');
+    }
+  }
+
+  Future<Either<String, ClassName?>> read({required String id}) async {
+    devLog(tag: tag, message: 'read on ${id}');
+    try {
+      final result = await apiService.get('/$path/${id}');
+
+      final parsed = ClassName.fromJson(result as Map<String, dynamic>);
+      return Right(parsed);
+    } catch (e) {
+      // logError('$tag $e');
+      return Left('Error');
+    }
+  }
+
+  Future<Either<String, List<ClassName>>> queryContains(
+      Map<String, dynamic> query) async {
+    devLog(tag: tag, message: 'queryContains called with ${query}');
+    try {
+      if (query.isEmpty) {
+        return Left('Error: Query is not correct');
+      }
+
+      final parsedList = <ClassName>[];
+
+      final results =
+          await apiService.get('/$path/query?filter=${jsonEncode(query)}');
+
+      final parsed = List<Map<String, dynamic>>.from(results);
+
+      for (final doc in parsed) {
+        devLog(tag: tag, message: 'parsing ${doc}');
+        final parsed = ClassName.fromJson(doc);
+        parsedList.add(parsed);
+      }
+
+      return Right(parsedList);
+    } catch (e) {
+      // logError('$tag $e');
+      return Left('Error');
+    }
+  }
+}

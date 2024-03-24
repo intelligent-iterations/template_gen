@@ -1,0 +1,79 @@
+import {
+    Controller,
+    Post,
+    Delete,
+    Get,
+    Body,
+    Param,
+    Query,
+    NotFoundException,
+    UseGuards,
+    Req,
+} from '@nestjs/common';
+import { AgentService } from './agent.service';
+import { CreateAgentDto } from './agent.dto';
+import { FirebaseAuthGuard } from '../../guards/firebase-auth.guard.ts';
+import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
+
+@UseGuards(FirebaseAuthGuard)
+@ApiTags('Agent')
+@Controller('agent')
+export class ClassName {
+    constructor(private readonly agentService: AgentService) { }
+
+    @Post('set')
+    @ApiOperation({
+        summary: 'Set (Create/Update) Agent',
+        description: 'Create or update a agent and store it in the database.',
+    })
+    async set(@Body() createAgentDto: CreateAgentDto, @Req() req: any): Promise<void> {
+        await this.agentService.set(createAgentDto, req.user);
+    }
+
+    @Delete('delete/:uid')
+    @ApiOperation({
+        summary: 'Delete Agent',
+        description: 'Delete a agent from the database based on UID.',
+    })
+    @ApiParam({ name: 'uid', description: 'UID of the agent to delete' })
+    async delete(@Param('uid') uid: string, @Req() req: any): Promise<void> {
+        if (!uid) {
+            throw new NotFoundException('UID is required');
+        }
+        await this.agentService.remove(uid, req.user.id );
+    }
+
+    
+
+    @Get('query')
+    @ApiOperation({
+        summary: 'Query Agents',
+        description: 'Query the database for agents using a dynamic map.',
+    })
+    @ApiQuery({ name: 'uid', required: true, description: 'User UID' })
+    @ApiQuery({ name: 'filter', required: false, description: 'Dynamic query map' })
+
+    async query(
+        @Query('filter') filter?: Record<string, any>
+    ): Promise<CreateAgentDto[]> {
+
+        return await this.agentService.query(filter);
+    }
+
+    @Get(':uid')
+    @ApiOperation({
+        summary: 'Read Agent',
+        description: 'Retrieve a agent from the database by UID.',
+    })
+    @ApiParam({ name: 'uid', description: 'UID of the agent to retrieve' })
+    async read(@Param('uid') uid: string): Promise<CreateAgentDto> {
+        if (!uid) {
+            throw new NotFoundException('UID is required');
+        }
+        const agent = await this.agentService.read(uid);
+        if (!agent) {
+            throw new NotFoundException('Agent not found');
+        }
+        return agent;
+    }
+}

@@ -1,0 +1,55 @@
+import 'package:stacked/stacked.dart';
+
+import '../model/class_name.dart';
+import '../repository/class_name_repository.dart';
+import '../util/id_generator.dart';
+
+class ClassNameViewModel extends BaseViewModel {
+  List<ClassName> get classNames => classNameRepository.classNameCache.values.toList();
+  ClassName? className;
+
+  init() async {
+    runBusyFuture(Future(() async {
+      await classNameRepository.readAll();
+      if (classNames.isEmpty) return;
+      className = classNames.first;
+    }));
+  }
+
+  void createNewClassName() async {
+    await classNameRepository.create(
+        model:
+            ClassName.example().copyWith(name: 'New ClassName').copyWith(id: newId()));
+    notifyListeners();
+  }
+
+  void updateClassName() async {
+    runBusyFuture(Future(() async {
+      await classNameRepository.update(model: className!);
+    }));
+  }
+
+  void delete() async {
+    runBusyFuture(Future(() async {
+      await classNameRepository.delete(model: className!);
+    }));
+  }
+
+  void select(ClassName className) {
+    this.className = className;
+    notifyListeners();
+  }
+
+  void update(ClassName className) {
+    this.className = className;
+    // notifyListeners();
+  }
+
+  void save() {
+    runBusyFuture(Future(() async {
+      final _className = className;
+      if (_className == null) return;
+      await classNameRepository.update(model: _className);
+    }));
+  }
+}

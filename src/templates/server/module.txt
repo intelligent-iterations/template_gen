@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { ClassNameService } from './class_name.service';
+import { UsageService } from '../../middleware/usage_caps/usage_service';
+import { ClassNameController } from './class_name.controller';
+import { UserUsageCapModule } from '../user_usage_cap/user_usage_cap.module';
+
+@Module({
+    providers: [ClassNameService, UsageService, UserUsageCapModule],
+    controllers: [ClassNameController],
+})
+export class ClassName {}

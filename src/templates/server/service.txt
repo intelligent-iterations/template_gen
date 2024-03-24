@@ -1,0 +1,111 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import * as admin from 'firebase-admin';
+import { CreateAgentDto } from './agent.dto';
+import { UserUsageCapService } from '../user_usage_cap/user_usage_cap.service';
+import { AgentResource } from 'src/middleware/usage_caps/resource_modells';
+import { UsageService } from 'src/middleware/usage_caps/usage_service';
+import { UserUsageCapDto } from '../user_usage_cap/user_usage_cap.dto';
+
+@Injectable()
+export class ClassName {
+    private db: admin.firestore.Firestore;
+    private projectCollection: admin.firestore.CollectionReference;
+
+    constructor() {
+        this.db = admin.firestore();
+        this.projectCollection = this.db.collection('Agent');
+    }
+
+    async removeOneAgentFromUsage(uid: string) {
+        const resource = new AgentResource(1);
+        const userUsageCapService = new UserUsageCapService();
+        const usagecapDtp = userUsageCapService.query({ uid: uid })[0];
+        const newUsage = (new UsageService()).removeResource(resource, usagecapDtp);
+        await userUsageCapService.set(newUsage);
+    }
+
+    async addAgentToUsage(uid: string) {
+        const resource = new AgentResource(1);
+        const userUsageCapService = new UserUsageCapService();
+        const usageService = new UsageService();
+        const usagecapDtp = userUsageCapService.query({ uid: uid })[0];
+        const newUsage = usageService.addResource(resource, usagecapDtp);
+        await userUsageCapService.set(newUsage);
+    }
+
+
+    async set(createCreateAgentDtoDto: CreateAgentDto, uid: string): Promise<void> {
+        const docRef = await this.projectCollection.doc(createCreateAgentDtoDto.id);
+        const agentExists = (await docRef.get()).exists;
+
+        if (!agentExists) {
+            await this.addAgentToUsage(uid);
+        }
+
+        await docRef.set(createCreateAgentDtoDto);
+        await this.projectCollection.doc(createCreateAgentDtoDto.id).set(createCreateAgentDtoDto);
+    }
+
+    async remove(uid: string, userId: string): Promise<void> {
+        await this.removeOneAgentFromUsage(userId);
+        await this.projectCollection.doc(uid).delete();
+    }
+
+    async query(filter?: Record<string, any> | string): Promise<CreateAgentDto[]> {
+        if (typeof filter === 'string') {
+            try {
+                filter = JSON.parse(filter);
+            } catch (e) {
+                console.error('Error parsing filter string as JSON:', e.message);
+                throw new Error('Invalid filter format. Expected an object or a JSON string.');
+            }
+        }
+
+        if (!filter || Object.keys(filter).length === 0) {
+            console.error('Error: Query filter is either absent or empty');
+            throw new Error('Error: Query is not correct');
+        }
+
+        console.debug(`Initiating query with filter: ${JSON.stringify(filter)}`);
+
+        let _query: FirebaseFirestore.Query = this.projectCollection;
+
+        if (typeof filter === 'object') {
+            Object.entries(filter).forEach(([key, value]) => {
+                console.debug(`Applying filter - Key: ${key}, Value: ${JSON.stringify(value)}`);
+                _query = _query.where(key, '==', value);
+            });
+        } else {
+            console.error('Error: Filter is not an object after parsing attempt.');
+            throw new Error('Error: Query is not correct - filter is not an object.');
+        }
+
+        try {
+            console.debug(`Final Query path: ${_query}`);
+
+            const result = await _query.get();
+
+            console.info(`Query successful. Retrieved ${result.docs.length} documents.`);
+            console.info(`Query successful. The query was: ${JSON.stringify(result.query)}`);
+
+            const parsedList: CreateAgentDto[] = result.docs.map(doc => doc.data() as CreateAgentDto);
+            console.debug(`Parsed documents: ${JSON.stringify(parsedList)}`);
+
+            return parsedList;
+        } catch (error) {
+            console.error('Error during Firestore query execution:', error.message);
+            throw new Error(`Error during Firestore query execution: ${error.message}`);
+        }
+    }
+
+    async read(uid: string): Promise<CreateAgentDto> {
+        const doc = await this.projectCollection.doc(uid).get();
+
+        if (!doc.exists) {
+            throw new NotFoundException('Agent not found');
+        }
+
+        const project = doc.data() as CreateAgentDto;
+        return project;
+    }
+}

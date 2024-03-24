@@ -1,0 +1,97 @@
+import 'package:either_dart/either.dart';
+import 'package:get_it/get_it.dart';
+import '../model/class_name.dart';
+import '../service/class_name_service.dart';
+import '../util/logging.dart';
+
+ClassNameRepository get classNameRepository => GetIt.instance<ClassNameRepository>();
+
+class ClassNameRepository {
+  final tag = 'ClassNameRepository';
+  final classNameCache = <String, ClassName>{};
+
+  Future<Either<String, ClassName>> create({required ClassName model}) async {
+    devLog(tag: tag, message: 'create');
+    try {
+      final result = await classNameService.set(model: model);
+      if (result.isRight) {
+        devLog(tag: tag, message: 'create adding to cache');
+        classNameCache[result.right.id ?? ''] = result.right;
+      }
+      return result;
+    } catch (e) {
+      return Left('Error');
+    }
+  }
+
+  Future<Either<String, ClassName?>> read({required String id}) async {
+    devLog(tag: tag, message: 'read');
+    final cache = classNameCache[id];
+
+    if (cache != null) {
+      devLog(tag: tag, message: 'read loading from cache');
+      return Right(cache);
+    } else {
+      devLog(tag: tag, message: 'read loading from service');
+      final result = await classNameService.read(id: id);
+      if (result.isRight) {
+        if (result.right != null) {
+          devLog(tag: tag, message: 'read adding result to cache');
+          classNameCache[id] = result.right!;
+        }
+      }
+      return result;
+    }
+  }
+
+  Future<Either<String, ClassName>> update({required ClassName model}) async {
+    try {
+      devLog(tag: tag, message: 'update');
+      final result = await classNameService.set(model: model);
+      if (result.isRight) {
+        classNameCache[result.right.id ?? ''] = result.right;
+      }
+      return result;
+    } catch (e) {
+      return Left('Error');
+    }
+  }
+
+  Future<Either<String, ClassName?>> delete({required ClassName model}) async {
+    try {
+      devLog(tag: tag, message: 'delete');
+      final result = await classNameService.delete(model: model);
+      if (result.isRight) {
+        classNameCache.remove(result.right.id ?? '');
+      }
+      return result;
+    } catch (e) {
+      return Left('Error');
+    }
+  }
+
+
+  Future<Either<String, List<ClassName>>> query(Map<String, dynamic> query) async {
+    devLog(tag: tag, message: 'query');
+
+    final cachedList = classNameCache.values.where((e) => e.match(query)).toList();
+
+    if (cachedList.isNotEmpty) {
+      devLog(
+        tag: tag,
+        message: 'query loading from cache length${cachedList.length}',
+      );
+      return Right(cachedList);
+    } else {
+      devLog(tag: tag, message: 'read loading from service');
+      final result = await classNameService.queryContains(query);
+      if (result.isRight) {
+        devLog(tag: tag, message: 'read adding result to cache');
+        for (final element in result.right) {
+          classNameCache[element.id ?? ''] = element;
+        }
+      }
+      return result;
+    }
+  }
+}

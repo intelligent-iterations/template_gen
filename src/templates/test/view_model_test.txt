@@ -1,0 +1,16 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:package_name/view_models/class_name_view_model.dart';
+
+main() {
+  var cat = ClassNameViewModel();
+
+  setUp(() {
+    cat = ClassNameViewModel();
+  });
+
+  group('ClassNameViewModel can', () {
+    test('initialize', () {
+      cat.init();
+    });
+  });
+}

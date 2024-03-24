@@ -1,0 +1,179 @@
+import 'package:flutter/material.dart';
+import 'package:stacked/stacked.dart';
+import '../../model/class_name.dart';
+import '../../ui/colors.dart';
+import '../../ui/styles.dart';
+import '../../view_models/class_name_view_model.dart';
+import '../widgets/base_text_field.dart';
+import '../widgets/tap_click.dart';
+
+final classNamePath = '/className';
+
+class ClassNameView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ViewModelBuilder<ClassNameViewModel>.reactive(
+      viewModelBuilder: () => ClassNameViewModel()..init(),
+      builder: (context, model, child) {
+        if (model.isBusy) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        return Scaffold(
+          body: ListView(
+            key: ValueKey('${DateTime.now()}'),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            children: [
+              SizedBox(height: 40),
+              Text('ClassName'),
+              SizedBox(height: 40),
+              ClassNameNames(),
+              SizedBox(height: 30),
+              _Tools(),
+              SizedBox(height: 30),
+              if(model.className!=null)
+                EditClassName(
+                  onUpdate: model.update,
+                  className: model.className!,
+                ),
+
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ClassNameNames
+    extends ViewModelWidget<ClassNameViewModel> {
+  const ClassNameNames({super.key});
+
+  @override
+  Widget build(BuildContext context, model) {
+    return Container(
+      height: 50,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final qa in model.classNames)
+            TapClick(
+              onTap: () => model.select(qa),
+              child: Container(
+                alignment: Alignment.center,
+                margin: const EdgeInsets.only(right: 6),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: qa.id == model.className?.id
+                      ? colorPrimary
+                      : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(qa.name ?? '', style: AppTextStyles.bodyText1),
+              ),
+            ),
+          if (model.busy('create'))
+            Center(child: CircularProgressIndicator())
+          else
+            IconButton(
+              onPressed: model.createNewClassName,
+              icon: Icon(
+                Icons.add,
+              ),
+            )
+        ],
+      ),
+    );
+  }
+}
+
+class _Tools extends ViewModelWidget<ClassNameViewModel> {
+  const _Tools({super.key});
+
+  @override
+  Widget build(BuildContext context, model) {
+    return Container(
+      height: 50,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.save,
+              color: Colors.green,
+              size: 40,
+            ),
+            onPressed: model.createNewClassName,
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            onPressed: model.delete,
+            icon: Icon(
+              Icons.delete,
+              color: Colors.red,
+              size: 40,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class EditClassName extends StatefulWidget {
+  const EditClassName({
+    required this.className,
+    required this.onUpdate,
+    super.key,
+  });
+
+  final ClassName className;
+  final Function(ClassName) onUpdate;
+
+  @override
+  State<EditClassName> createState() => _EditClassNameState();
+}
+
+class _EditClassNameState extends State<EditClassName> {
+  late ClassName className;
+  Map<String, dynamic> classNameMap = {};
+
+  ClassName get newAgent =>
+      ClassName.fromJson(classNameMap);
+
+  @override
+  void initState() {
+    className = widget.className;
+    classNameMap = className.toJson();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // padding: const EdgeInsets.all(24),
+      // margin: const EdgeInsets.only(bottom: 12),
+      // color: Colors.grey[100],
+      child: Column(
+        children: [
+          for (final field in widget.className.toJson().entries)
+            if (field.value.runtimeType == String)
+              if (field.key != 'id')
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: BaseTextField(
+                    labelText: field.key,
+                    initialValue: field.value,
+                    onChanged: (newValue) {
+                      classNameMap[field.key] = newValue;
+                      widget.onUpdate(newAgent);
+                    },
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+}
